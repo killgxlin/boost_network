@@ -11,3 +11,13 @@
 *.lai
 *.la
 *.a
+*.sdf
+*.pdb
+*.ilk
+*.exe
+*.obj
+*.idb
+*.log
+*.tlog
+*.lastbuildstate
+*.unsuccessfulbuild
