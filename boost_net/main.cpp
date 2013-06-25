@@ -1,5 +1,3 @@
-#define _WIN32_WINNT _WIN32_WINNT_WIN7
-
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
@@ -156,7 +154,6 @@ typedef boost::shared_ptr<server_t> pserver_t;
 
 // 连接，发验证消息，几率断连接
 struct robot_t {
-
 	void init(const char* ip_, const uint16_t port_) {}
 	void destroy() {}
 
@@ -164,6 +161,11 @@ struct robot_t {
 	void try_connect() {}
 	void disconnect() {}
 
+	asio::ip::tcp::socket _socket;
+	asio::io_service _iosvc;
+	asio::ip::tcp::endpoint _endpoint;
+
+	robot_t():_socket(_iosvc){}
 };
 
 void test_client() {
