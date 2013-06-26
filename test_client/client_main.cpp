@@ -52,7 +52,7 @@ struct client_t {
 	}
 
 	void try_connect() {
-		if (_connecting || _connected)
+		if (_connecting || _connected || _closing)
 			return;
 
 		_connected = false;
@@ -74,7 +74,6 @@ struct client_t {
 	}
 
 	bool sending;
-	typedef std::pair<pmsg_t, pmsg_t> send_pair;
 	void do_send() {
 		if (sending) 
 			return;
