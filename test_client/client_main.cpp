@@ -39,16 +39,19 @@ struct client_t {
 		_ep.port(port_);
 
 		_work = pwork_t(new asio::io_service::work(_svc));
-		boost::thread thr(boost::bind(&asio::io_service::run, &_svc));
-		thr.swap(boost::move(_worker));
+		_worker.swap(boost::move(boost::thread(boost::bind(&asio::io_service::run, &_svc))));
 	}
+
 	void destroy() {
 		_work.reset();
 		_worker.join();
+
+		_send_queue.reset();
+		_recv_queue.reset();
 	}
 
 	bool is_connected() {
-		return _connected;
+		return !_closing && _connected;
 	}
 
 	void try_connect() {
@@ -69,28 +72,37 @@ struct client_t {
 			}
 		});
 	}
+
 	void disconnect() {
 		_closing = true;
 	}
 
-	bool sending;
+	pmsg_t sended;
 	void do_send() {
-		if (sending) 
+		if (sended)
 			return;
-		sending = true;
 
-		pmsg_t sended;
 		if (_send_queue.pop(sended)) {
-			asio::async_write(_socket, asio::buffer(*sended), boost::bind(&client_t::handle_sended, this, asio::placeholders::error, asio::placeholders::bytes_transferred, sended));
+			asio::async_write(_socket, asio::buffer(*sended), boost::bind(&client_t::handle_sended, this, asio::placeholders::error, asio::placeholders::bytes_transferred));
+		} else if (_closing) {
+			_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+			_socket.close();
+
+			_send_queue.reset();
+			_recv_queue.reset();
+
+			_closing = false;
 		}
 		
 	}
-	void handle_sended(const boost::system::error_code &ec_, std::size_t bytes_transferred, pmsg_t msg_) {
-		pmsg_t sended;
+	void handle_sended(const boost::system::error_code &ec_, std::size_t bytes_transferred) {
+		if (!ec_) {
+			std::cout<<ec_.message()<<std::endl;
+			return;
+		}
+
 		if (_send_queue.pop(sended)) {
-			asio::async_write(_socket, asio::buffer(*sended), boost::bind(&client_t::handle_sended, this, asio::placeholders::error, asio::placeholders::bytes_transferred, sended));
-		} else {
-			sending = false;
+			asio::async_write(_socket, asio::buffer(*sended), boost::bind(&client_t::handle_sended, this, asio::placeholders::error, asio::placeholders::bytes_transferred));
 		}
 	}
 
@@ -113,24 +125,32 @@ struct client_t {
 			std::cout<<ec_.message()<<std::endl;
 			return;
 		}
-		if (_recv_queue.push(msg_))
+		if (_recv_queue.push(msg_)) {
 			do_recv();
+		} else {
+			disconnect();
+		}
 	}
-	
-	pmsg_t get_sended(uint32_t len_) { return pmsg_t(0); }
+
+	pmsg_t get_sended(uint32_t len_) { return pmsg_t(new msg_t(len_+4)); }
 
 	bool send(pmsg_t msg_) {
-		if (_closing)
+		if (!is_connected())
 			return false;
 
 		if (!_send_queue.push(msg_)) 
 			return false;
 
-		_svc.post(boost::bind(&client_t::do_send, this));
+		if (!sended)
+			_svc.post(boost::bind(&client_t::do_send, this));
+
 		return true;
 	}
 
 	pmsg_t recv() {
+		if (!is_connected())
+			return pmsg_t(NULL);
+
 		pmsg_t recved;
 		_recv_queue.pop(recved);
 		return recved;
@@ -147,21 +167,34 @@ int main() {
 		boost::this_thread::sleep(posix_time::millisec(10));
 	} while (!cli.is_connected());
 
-	pmsg_t sended = cli.get_sended(100);
-	for (int i=0; i<100; ++i)
-		sended->data()[i] = i;
-	cli.send(sended);
+	{
+		pmsg_t sended = cli.get_sended(3);
+		for (int i=4; i<4+3; ++i)
+			sended->data()[i] = i-4;
+		*(uint32_t*)sended->data() = 3;
+		cli.send(sended);
+	}
 
 	while (cli.is_connected()) {
 		pmsg_t recved = cli.recv();
 		if (recved) {
 			if (rand() % 2)
 				cli.return_recved(recved);
-			else
-				cli.send(recved);
 		}
+
+		if (rand() % 2 == 0) {
+			size_t len = rand() % 100;
+			pmsg_t sended = cli.get_sended(len);
+			*(uint32_t*)sended->data() = len;
+			for (int i=4; i<4+len; ++i)
+				sended->data()[i] = i-4;
+			cli.send(sended);
+		}
+
 		if (rand() % 6 == 0)
 			cli.disconnect();
+
+		boost::this_thread::sleep(posix_time::millisec(100));
 	}
 
 	cli.destroy();
