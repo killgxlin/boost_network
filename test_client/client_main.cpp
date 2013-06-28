@@ -158,6 +158,8 @@ struct client_t {
 	void return_recved(pmsg_t msg_) {}
 };
 
+#include <stdio.h>
+
 int main() {
 	client_t cli;
 	cli.init("127.0.0.1", 999);
@@ -165,8 +167,9 @@ int main() {
 	do {
 		cli.try_connect();
 		boost::this_thread::sleep(posix_time::millisec(10));
+		printf("connecting\n");
 	} while (!cli.is_connected());
-
+	
 	{
 		pmsg_t sended = cli.get_sended(3);
 		for (int i=4; i<4+3; ++i)
@@ -174,6 +177,7 @@ int main() {
 		*(uint32_t*)sended->data() = 3;
 		cli.send(sended);
 	}
+	printf("sended\n");
 
 	while (cli.is_connected()) {
 		pmsg_t recved = cli.recv();
@@ -191,8 +195,10 @@ int main() {
 			cli.send(sended);
 		}
 
-		if (rand() % 6 == 0)
+		if (rand() % 6 == 0) {
 			cli.disconnect();
+			printf("disconnected\n");
+		}
 
 		boost::this_thread::sleep(posix_time::millisec(100));
 	}
