@@ -21,3 +21,5 @@
 *.tlog
 *.lastbuildstate
 *.unsuccessfulbuild
+*.vcxproj.user
+*.opensdf

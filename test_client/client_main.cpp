@@ -237,7 +237,7 @@ __start:
 
 int main() {
 	boost::thread_group client;
-	for (int i=0; i<1; ++i)
+	for (int i=0; i<1000; ++i)
 		client.create_thread(thread_client);
 
 	client.join_all();
