@@ -16,10 +16,10 @@ std::set<pclient_t> online;
 
 
 void test_server() {
-	gn.init(100, 2);
+	gn.init(1, 4);
 	uint32_t acceptor1 = gn.start_acceptor("127.0.0.1", 999, 
 		[](pclient_t need_auth_){
-			pauthing_t to_auth;
+			pauthing_t to_auth = boost::make_shared<authing_t>();
 			to_auth->client = need_auth_;
 			to_auth->try_num = 0;
 			g_need_auth_queue.push(to_auth);
@@ -58,12 +58,13 @@ void test_server() {
 					gn.dealloc_msg(to_auth->client, first);
 					gn.auth_result(to_auth->client, ok);
 				} else {
-					to_auth->try_num++;
-					if (to_auth->try_num > 10) {
-						gn.auth_result(to_auth->client, false);
-					} else if (!g_need_auth_queue.push(to_auth)) {
-						gn.auth_result(to_auth->client, false);
-					}
+					g_need_auth_queue.push(to_auth);
+					// to_auth->try_num++;
+					// if (to_auth->try_num > 100) {
+					// 	gn.auth_result(to_auth->client, false);
+					// } else if (!g_need_auth_queue.push(to_auth)) {
+					// 	gn.auth_result(to_auth->client, false);
+					// }
 				}
 			}
 		}
@@ -99,6 +100,7 @@ void test_server() {
 		}
 
 		gn.active_send();
+		boost::this_thread::sleep(posix_time::millisec(50));
 	}
 
 	gn.stop_acceptor(acceptor1);

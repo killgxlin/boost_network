@@ -63,6 +63,7 @@ struct client_t {
 		_closing = false;
 
 		_socket.async_connect(_ep, [this](const boost::system::error_code &ec_){
+			printf("connected\n");
 			_connecting = false;
 			if (!ec_) {
 				_connected = false;
@@ -96,11 +97,11 @@ struct client_t {
 		
 	}
 	void handle_sended(const boost::system::error_code &ec_, std::size_t bytes_transferred) {
-		if (!ec_) {
+		if (ec_) {
 			std::cout<<ec_.message()<<std::endl;
 			return;
 		}
-
+		printf("sended\n");
 		if (_send_queue.pop(sended)) {
 			asio::async_write(_socket, asio::buffer(*sended), boost::bind(&client_t::handle_sended, this, asio::placeholders::error, asio::placeholders::bytes_transferred));
 		}
@@ -111,20 +112,21 @@ struct client_t {
 		asio::async_read(_socket, asio::buffer(*recved), boost::bind(&client_t::handle_recv_head, this, asio::placeholders::error, asio::placeholders::bytes_transferred, recved));
 	}
 	void handle_recv_head(const boost::system::error_code &ec_, std::size_t bytes_transferred_, pmsg_t msg_) {
-		if (!ec_) {
+		if (ec_) {
 			std::cout<<ec_.message()<<std::endl;
 			return;
 		}
 		uint32_t size = uint32_t(msg_->data());
 		msg_->reserve(size);
-
+		printf("recv head\n");
 		asio::async_read(_socket, asio::buffer(*msg_), boost::bind(&client_t::handle_recv_body, this, asio::placeholders::error, asio::placeholders::bytes_transferred, msg_));
 	}
 	void handle_recv_body(const boost::system::error_code &ec_, std::size_t bytes_transferred_, pmsg_t msg_) {
-		if (!ec_) {
+		if (ec_) {
 			std::cout<<ec_.message()<<std::endl;
 			return;
 		}
+		printf("recv body\n");
 		if (_recv_queue.push(msg_)) {
 			do_recv();
 		} else {
@@ -160,9 +162,11 @@ struct client_t {
 
 #include <stdio.h>
 
-int main() {
+int thread_client() {
 	client_t cli;
 	cli.init("127.0.0.1", 999);
+
+__start:
 
 	do {
 		cli.try_connect();
@@ -177,7 +181,7 @@ int main() {
 		*(uint32_t*)sended->data() = 3;
 		cli.send(sended);
 	}
-	printf("sended\n");
+	printf("first msg\n");
 
 	while (cli.is_connected()) {
 		pmsg_t recved = cli.recv();
@@ -195,7 +199,7 @@ int main() {
 			cli.send(sended);
 		}
 
-		if (rand() % 6 == 0) {
+		if (rand() % 100 == 0) {
 			cli.disconnect();
 			printf("disconnected\n");
 		}
@@ -203,7 +207,17 @@ int main() {
 		boost::this_thread::sleep(posix_time::millisec(100));
 	}
 
+	goto __start;
+
 	cli.destroy();
 
 	return 0;
+}
+
+int main() {
+	boost::thread_group client;
+	for (int i=0; i<10; ++i)
+		client.create_thread(thread_client);
+
+	client.join_all();
 }

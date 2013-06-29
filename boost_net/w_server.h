@@ -57,9 +57,10 @@ struct client_t {
 	boost::atomic<bool> sending;
 
 	boost::atomic<bool> connected;
+	boost::atomic<bool> authorized;
 
 	client_t(asio::io_service &service_)
-		:socket(service_), strand(service_), pacceptor(NULL), timer(service_), recv_queue(1024), send_queue(1024), connected(false), sending(false) {}
+		:socket(service_), strand(service_), pacceptor(NULL), timer(service_), recv_queue(1024), send_queue(1024), connected(false), sending(false), authorized(false) {}
 
 	void do_reset() {
 		spmsg_t dummy;
@@ -71,9 +72,10 @@ struct client_t {
 		send_msg.reset();
 		recv_msg_len = 0;
 		sending = false;
+		authorized = false;
 	}
 
-	void do_start();
+	void do_start(pacceptor_t pacceptor_);
 
 	void do_recv();
 	void handle_recv_head(const boost::system::error_code& ec, size_t recv_num_);
@@ -94,8 +96,7 @@ struct client_t {
 		if (send_queue.empty())
 			return;
 
-		static bool f = false;
-		if (!sending.compare_exchange_strong(f, true))
+		if (sending.load())
 			return;
 
 		strand.post(boost::bind(&client_t::do_send, this));
