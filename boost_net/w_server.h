@@ -1,3 +1,4 @@
+
 #ifndef W_SERVER_H
 #define W_SERVER_H
 
@@ -31,6 +32,7 @@ struct acceptor_t {
 
 	// worker
 	void do_accept();
+	void real_accept();
 	void handle_accept(const boost::system::error_code &ec_);
 
 	// main
@@ -47,61 +49,65 @@ struct client_t {
 	asio::io_service::strand strand;
 	asio::ip::tcp::socket socket;
 	pacceptor_t pacceptor;
-
-	asio::deadline_timer timer;
-	uint32_t recv_msg_len;
-	spmsg_t recv_msg;
-	spmsg_t send_msg;
-	msg_queue_t recv_queue;
-	msg_queue_t send_queue;
-	boost::atomic<bool> sending;
-
 	boost::atomic<bool> connected;
-	boost::atomic<bool> authorized;
 
 	client_t(asio::io_service &service_)
-		:socket(service_), strand(service_), pacceptor(NULL), timer(service_), recv_queue(1024), send_queue(1024), connected(false), sending(false), authorized(false) {}
+		:socket(service_), strand(service_), timer(service_), recv_queue(1024), send_queue(1024) 
+	{
+		do_reset();
+	}
 
 	void do_reset() {
 		spmsg_t dummy;
-		while (!send_queue.empty()) send_queue.pop(dummy);
-		while (!recv_queue.empty()) recv_queue.pop(dummy);
-
+		
 		pacceptor = NULL;
-		recv_msg.reset();
-		send_msg.reset();
+		connected.store(false);
+
+		while (!recv_queue.empty()) recv_queue.pop(dummy);
 		recv_msg_len = 0;
-		sending = false;
-		authorized = false;
+		recv_msg.reset();
+		
+		while (!send_queue.empty()) send_queue.pop(dummy);
+		send_msg.reset();
+		sending.store(false);
+		
+		authorized.store(false);
+
+		disconnecting.store(false);
 	}
 
 	void do_start(pacceptor_t pacceptor_);
 
+	uint32_t recv_msg_len;
+	spmsg_t recv_msg;
+	msg_queue_t recv_queue;
 	void do_recv();
 	void handle_recv_head(const boost::system::error_code& ec, size_t recv_num_);
 	void handle_recv_body(const boost::system::error_code& ec, size_t recv_num_);
 
+	spmsg_t send_msg;
+	msg_queue_t send_queue;
+	boost::atomic<bool> sending;
+	void send();
 	void do_send();
+	void real_send();
 	void handle_send(const boost::system::error_code& ec, size_t recv_num_);
 
-	void do_auth_result(bool ok_);
-	void handle_auth_timeout(const boost::system::error_code &ec_);
-
-	void do_disconnect();
-
-	void send() {
+	asio::deadline_timer timer;
+	boost::atomic<bool> authorized;
+	void auth_result(bool ok_) {
 		if (!connected.load())
 			return;
 
-		if (send_queue.empty())
-			return;
-
-		if (sending.load())
-			return;
-
-		strand.post(boost::bind(&client_t::do_send, this));
+		strand.post(boost::bind(&client_t::do_auth_result, this, ok_));	
 	}
+	void do_auth_result(bool ok_);
+	void handle_auth_timeout(const boost::system::error_code &ec_);
+
+	boost::atomic<bool> disconnecting;
 	void disconnect();
+	void do_disconnect();
+	void real_disconnect();
 };
 
 // ----------------------------------------------------------
@@ -119,10 +125,7 @@ struct network_t {
 
 	// main
 	void auth_result(pclient_t client_, bool ok_) {
-		if (!client_->connected.load())
-			return;
-
-		client_->strand.post(boost::bind(&client_t::do_auth_result, client_, ok_));
+		client_->auth_result(ok_);
 	}
 
 	void disconnect(pclient_t client_) {

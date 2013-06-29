@@ -2,36 +2,34 @@
 #include "w_server.h"
 
 void client_t::do_start(pacceptor_t pacceptor_) {
-	printf("client %u do_start\n", this);
-	connected.store(true);
 	pacceptor = pacceptor_;
+	connected.store(true);
+
+	do_recv();
 
 	if (timer.expires_from_now(posix_time::millisec(1000)))
 		timer.async_wait(strand.wrap(boost::bind(&client_t::handle_auth_timeout, this, asio::placeholders::error)));
-	do_recv();
 
 	pacceptor->loghandler.auth(this);
 }
 
 void client_t::do_recv() {
-	printf("client %u do_recv\n", this);
 	asio::async_read(socket, asio::buffer(&recv_msg_len, sizeof(recv_msg_len)), 
 		strand.wrap(boost::bind(&client_t::handle_recv_head, this, asio::placeholders::error, asio::placeholders::bytes_transferred)));
 }
-	
+
 void client_t::handle_recv_head(const boost::system::error_code& ec_, size_t recv_num_) {
 	if (ec_) {
 		do_disconnect();
 		return;
 	}
 
-	printf("client %u handle_recv_head\n", this);
 	recv_msg = boost::make_shared<msg_t>(sizeof(recv_msg_len) + recv_msg_len);
 	*(uint32_t*)recv_msg->data() = recv_msg_len;
 	asio::async_read(socket, asio::buffer(recv_msg->data()+sizeof(recv_msg_len), recv_msg_len), 
 		strand.wrap(boost::bind(&client_t::handle_recv_body, this, asio::placeholders::error, asio::placeholders::bytes_transferred)));
 }
-	
+
 void client_t::handle_recv_body(const boost::system::error_code& ec_, size_t recv_num_) {
 	if (ec_) {
 		do_disconnect();
@@ -42,8 +40,22 @@ void client_t::handle_recv_body(const boost::system::error_code& ec_, size_t rec
 		do_disconnect();
 		return;
 	} 
-	printf("client %u handle_recv_body\n", this);
+
 	do_recv();
+}
+
+void client_t::send() {
+	if (!connected.load())
+		return;
+
+	if (send_queue.empty())
+		return;
+
+	static bool f = false;
+	if (!sending.compare_exchange_strong(f, true))
+		return;
+
+	strand.post(boost::bind(&client_t::real_send, this));
 }
 
 void client_t::do_send() {
@@ -51,29 +63,33 @@ void client_t::do_send() {
 	if (!sending.compare_exchange_strong(f, true))
 		return;
 
-	if (!send_queue.pop(send_msg)) 
-		return;
+	real_send();
+}
 
-	printf("client %u do_send\n", this);
+void client_t::real_send() {
+	if (!send_queue.pop(send_msg)) {
+		sending.store(false);
+		return;
+	}
+
 	asio::async_write(socket, asio::buffer(*send_msg), 
 		strand.wrap(boost::bind(&client_t::handle_send, this, asio::placeholders::error, asio::placeholders::bytes_transferred)));
 }
 
 void client_t::handle_send(const boost::system::error_code& ec_, size_t recv_num_) {
 	if (ec_) {
+		sending.store(false);
 		do_disconnect();
 		return;
 	}
 
-	sending.store(false);
-
-	printf("client %u handle_send\n", this);
-	do_send();
+	real_send();
 }
 
 void client_t::do_auth_result(bool ok_) {
 	if (!connected.load())
 		return;
+
 	authorized = ok_;
 
 	timer.cancel();
@@ -82,7 +98,6 @@ void client_t::do_auth_result(bool ok_) {
 		return;
 	}
 
-	printf("client %u do_auth_result\n", this);
 	pacceptor->loghandler.logon(this);
 }
 
@@ -91,16 +106,32 @@ void client_t::handle_auth_timeout(const boost::system::error_code &ec_) {
 		return;
 	}
 
-	printf("client %u handle_auth_timeout\n", this);
 	do_disconnect();
 }
 
 void client_t::do_disconnect() {
-	printf("client %u do_disconnect\n", this);
-	static bool t = true;
-	if (!connected.compare_exchange_strong(t, false))
+	if (!connected.load())
 		return;
 
+	static bool f = false;
+	if (!disconnecting.compare_exchange_strong(f, true))
+		return;
+
+	real_disconnect();
+}
+
+void client_t::disconnect() {
+	if (!connected.load())
+		return;
+
+	static bool f = false;
+	if (!disconnecting.compare_exchange_strong(f, true))
+		return;
+
+	strand.post(boost::bind(&client_t::real_disconnect, this));
+}
+
+void client_t::real_disconnect() {
 	if (authorized)
 		pacceptor->loghandler.logoff(this);
 
@@ -121,41 +152,42 @@ void client_t::do_disconnect() {
 	}
 }
 
-void client_t::disconnect() {
-	printf("client %u disconnect\n", this);
-	static bool t = true;
-	if (!connected.compare_exchange_strong(t, false))
+// main
+void acceptor_t::accept() {
+	static bool f = false;
+	if (!accepting.compare_exchange_strong(f, true))
 		return;
 
-	strand.post(boost::bind(&client_t::do_disconnect, this));
+	acceptor.get_io_service().post(boost::bind(&acceptor_t::real_accept, this));
 }
 
 void acceptor_t::do_accept() {
 	static bool f = false;
-	if (!accepting.compare_exchange_strong(f, true)) 
+	if (!accepting.compare_exchange_strong(f, true))
 		return;
 
+	real_accept();
+}
+
+void acceptor_t::real_accept() {
 	client = NULL;
 	if (pnetwork->free.pop(client))
 		acceptor.async_accept(client->socket, boost::bind(&acceptor_t::handle_accept, this, asio::placeholders::error));
+	else
+		accepting.store(false);
 }
 
 void acceptor_t::handle_accept(const boost::system::error_code &ec_) {
 	if (!ec_) {
-		//client->pacceptor = this;
 		client->do_start(this);
 	} else {
 		pnetwork->free.push(client);
 	}
-	accepting.store(false);
-	printf("client %u handle_accept\n", this);
-	if (asio::error::operation_aborted != ec_)
-		do_accept();
-}
 
-// main
-void acceptor_t::accept() {
-	acceptor.get_io_service().post(boost::bind(&acceptor_t::do_accept, this));
+	if (asio::error::operation_aborted != ec_)
+		real_accept();
+	else
+		accepting.store(false);
 }
 
 bool network_t::init(size_t max_client_num_, size_t worker_num_) {

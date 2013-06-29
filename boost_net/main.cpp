@@ -17,7 +17,7 @@ std::set<pclient_t> online;
 
 void test_server() {
 	gn.init(1, 4);
-	uint32_t acceptor1 = gn.start_acceptor("127.0.0.1", 999, 
+	uint32_t acceptor1 = gn.start_acceptor("192.168.1.113", 999, 
 		[](pclient_t need_auth_){
 			pauthing_t to_auth = boost::make_shared<authing_t>();
 			to_auth->client = need_auth_;
@@ -80,24 +80,24 @@ void test_server() {
 				}
 			}
 		}
-		{
-			boost::lock_guard<boost::mutex> guard(lock_online);
-			for(auto itr = online.begin();
-				itr != online.end();
-				++itr) {
-
-				size_t len = rand() % 100;
-				spmsg_t sended = gn.alloc_msg(*itr, len);
-
-				if (sended) {
-					*(size_t*)sended->data() = len;
-					for (int i=0; i<len; ++i) {
-						sended->data()[i+4] = i;
-					}
-					gn.send(*itr, sended);
-				}
-			}
-		}
+//		{
+//			boost::lock_guard<boost::mutex> guard(lock_online);
+//			for(auto itr = online.begin();
+//				itr != online.end();
+//				++itr) {
+//
+//				size_t len = rand() % 100;
+//				spmsg_t sended = gn.alloc_msg(*itr, len);
+//
+//				if (sended) {
+//					*(size_t*)sended->data() = len;
+//					for (int i=0; i<len; ++i) {
+//						sended->data()[i+4] = i;
+//					}
+//					gn.send(*itr, sended);
+//				}
+//			}
+//		}
 
 		gn.active_send();
 		boost::this_thread::sleep(posix_time::millisec(50));
