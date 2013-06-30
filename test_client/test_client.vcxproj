@@ -144,6 +144,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="client_main.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="new_client.cpp" />
+    <ClCompile Include="portable_socket.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="portable_socket.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
