@@ -88,6 +88,9 @@ struct transport_t {
 				break;
 			}
 
+			BOOL bDontLinger = TRUE;
+			setsockopt( sock, SOL_SOCKET, SO_DONTLINGER, ( const char* )&bDontLinger, sizeof( BOOL ) );
+
 			addr.sin_family = AF_INET;
 			addr.sin_addr   = *((in_addr*)*h->h_addr_list);
 			addr.sin_port   = htons(port);
@@ -236,7 +239,7 @@ void fill_msg(spmsg_t msg_, uint32_t size_) {
 
 int main() {
 	transport_t trans;
-	trans.init("192.168.1.101", 999);
+	trans.init("localhost", 999);
 
 	do {
 		if (!trans.is_connecting()) {
