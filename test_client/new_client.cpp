@@ -237,7 +237,7 @@ void fill_msg(spmsg_t msg_, uint32_t size_) {
 	
 }
 
-int main() {
+int main_2() {
 	transport_t trans;
 	trans.init("localhost", 999);
 

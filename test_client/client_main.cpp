@@ -174,7 +174,7 @@ struct client_t {
 
 int thread_client() {
 	client_t cli;
-	cli.init("192.168.1.113", 999);
+	cli.init("127.0.0.1", 999);
 
 __start:
 
@@ -235,7 +235,7 @@ __start:
 	return 0;
 }
 
-int main_2() {
+int main() {
 	boost::thread_group client;
 	for (int i=0; i<1000; ++i)
 		client.create_thread(thread_client);

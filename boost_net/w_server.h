@@ -93,7 +93,7 @@ struct client_t {
 	void real_send();
 	void handle_send(const boost::system::error_code& ec, size_t recv_num_);
 
-	asio::deadline_timer timer;
+	asio::deadline_timer timer; // 如果没有auth_result就不会释放
 	boost::atomic<bool> authorized;
 	void auth_result(bool ok_) {
 		if (!connected.load())
