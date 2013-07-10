@@ -175,7 +175,7 @@ struct client_t {
 int thread_client() {
 	asio::io_service svc;
 	client_t cli(svc);
-	cli.init("127.0.0.1", 999);
+	cli.init("192.168.1.100", 999);
 
 __start:
 
@@ -236,9 +236,9 @@ __start:
 	return 0;
 }
 
-int main_cm() {
+int main() {
 	boost::thread_group client;
-	for (int i=0; i<1; ++i)
+	for (int i=0; i<200; ++i)
 		client.create_thread(thread_client);
 
 	client.join_all();

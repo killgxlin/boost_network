@@ -17,7 +17,7 @@ std::set<pclient_t> online;
 
 void test_server() {
 	gn.init(1000, 8);
-	uint32_t acceptor1 = gn.start_acceptor("127.0.0.1", 999, 
+	uint32_t acceptor1 = gn.start_acceptor("192.168.1.100", 999, 
 		[](pclient_t need_auth_){
 			pauthing_t to_auth = boost::make_shared<authing_t>();
 			to_auth->client = need_auth_;

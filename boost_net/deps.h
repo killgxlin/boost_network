@@ -1,6 +1,5 @@
 #ifndef DEPS_H
 #define DEPS_H
-#define BOOST_ASIO_ENABLE_HANDLER_TRACKING
 
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
