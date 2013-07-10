@@ -11,7 +11,7 @@ void client_t::do_start(pacceptor_t pacceptor_) {
 		timer.async_wait(strand.wrap([this](const boost::system::error_code &ec_){
 			if (ec_)
 				return;
-
+			std::cerr<<"expired"<<std::endl;
 			do_disconnect();
 		}));
 

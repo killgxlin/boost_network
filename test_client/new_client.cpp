@@ -269,7 +269,7 @@ void client_thread() {
 	trans.destroy();
 }
 
-int main_nc() {
+int main() {
 	boost::thread_group client;
 	for (int i=0; i<1; ++i)
 		client.create_thread(client_thread);
