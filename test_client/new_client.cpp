@@ -10,7 +10,7 @@
 #include <string>
 #include <chrono>
 
-
+#include <boost/thread.hpp>
 
 typedef std::vector<uint8_t> msg_t;
 typedef std::shared_ptr<msg_t> spmsg_t;
@@ -237,7 +237,7 @@ void fill_msg(spmsg_t msg_, uint32_t size_) {
 	
 }
 
-int main_2() {
+void client_thread() {
 	transport_t trans;
 	trans.init("localhost", 999);
 
@@ -267,6 +267,14 @@ int main_2() {
 	}
 
 	trans.destroy();
+}
 
+int main_nc() {
+	boost::thread_group client;
+	for (int i=0; i<1; ++i)
+		client.create_thread(client_thread);
+
+	client.join_all();
+	
 	return 0;
 }

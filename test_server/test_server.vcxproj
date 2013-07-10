@@ -143,8 +143,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="server_main.cpp" />
-    <ClCompile Include="temp.cpp" />
+    <ClInclude Include="..\..\boost_1_54_0\doc\html\boost_asio\example\cpp11\chat\chat_message.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\boost_1_54_0\libs\asio\example\cpp11\chat\chat_server.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

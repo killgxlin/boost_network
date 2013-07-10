@@ -20,7 +20,7 @@ typedef boost::shared_ptr<asio::io_service::work> pwork_t;
 typedef lockfree::spsc_queue<spmsg_t> msg_queue_t;
 
 struct client_t {
-	asio::io_service _svc;
+	asio::io_service &_svc;
 	asio::ip::tcp::socket _socket;
 	asio::ip::tcp::endpoint _ep;
 	boost::atomic<bool>  _connecting;
@@ -31,7 +31,7 @@ struct client_t {
 	msg_queue_t _send_queue;
 	msg_queue_t _recv_queue;
 
-	client_t():_svc(), _socket(_svc), _send_queue(1024), _recv_queue(1024){}
+	client_t(asio::io_service &svc_):_svc(svc_), _socket(svc_), _send_queue(1024), _recv_queue(1024){}
 
 	void init(const char* ip_, const uint16_t port_) {
 		_connected = false;
@@ -173,7 +173,8 @@ struct client_t {
 #include <stdio.h>
 
 int thread_client() {
-	client_t cli;
+	asio::io_service svc;
+	client_t cli(svc);
 	cli.init("127.0.0.1", 999);
 
 __start:
@@ -235,9 +236,9 @@ __start:
 	return 0;
 }
 
-int main() {
+int main_cm() {
 	boost::thread_group client;
-	for (int i=0; i<1000; ++i)
+	for (int i=0; i<1; ++i)
 		client.create_thread(thread_client);
 
 	client.join_all();

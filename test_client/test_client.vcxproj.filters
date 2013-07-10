@@ -27,9 +27,15 @@
     <ClCompile Include="new_client.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\boost_1_54_0\libs\asio\example\cpp11\chat\chat_client.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="portable_socket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\boost_1_54_0\libs\asio\example\cpp03\chat\chat_message.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

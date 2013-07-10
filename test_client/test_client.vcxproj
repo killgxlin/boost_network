@@ -143,12 +143,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\boost_1_54_0\libs\asio\example\cpp11\chat\chat_client.cpp" />
     <ClCompile Include="client_main.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="new_client.cpp" />
     <ClCompile Include="portable_socket.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\boost_1_54_0\libs\asio\example\cpp03\chat\chat_message.hpp" />
     <ClInclude Include="portable_socket.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

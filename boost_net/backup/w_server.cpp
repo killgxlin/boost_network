@@ -49,7 +49,7 @@ void client_t::do_recv() {
 
 
 void client_t::send() {
-	if (!connected.load() || disconnecting.load())
+	if (!connected.load())
 		return;
 
 	if (send_queue.empty())
@@ -132,11 +132,11 @@ void client_t::real_disconnect() {
 	}
 }
 void client_t::auth_result(bool ok_) {
-	if (!connected.load() || disconnecting.load())
+	if (!connected.load())
 		return;
 
 	strand.post([this, ok_](){
-		if (!connected.load() || disconnecting.load())
+		if (!connected.load())
 			return;
 
 		authorized = ok_;

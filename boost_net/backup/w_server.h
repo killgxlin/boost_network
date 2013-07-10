@@ -123,7 +123,7 @@ struct network_t {
 
 	// main
 	spmsg_t recv(pclient_t client_) {
-		if (!client_->connected.load() || client_->disconnecting.load())
+		if (!client_->connected.load())
 			return spmsg_t(NULL);
 
 		spmsg_t msg;
@@ -132,13 +132,8 @@ struct network_t {
 	}
 
 	bool send(pclient_t client_, spmsg_t msg_) {
-		if (!client_->connected.load() || client_->disconnecting.load())
+		if (!client_->connected.load())
 			return false;
-
-		if (msg_->empty()) {
-			std::cerr<<"empty msg"<<std::endl;
-			return false;
-		}
 
 		return client_->send_queue.push(msg_);
 	}
